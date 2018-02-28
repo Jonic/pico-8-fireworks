@@ -3,6 +3,7 @@ version 16
 __lua__
 -- fireworks
 -- by jonic
+-- v1.1.0
 
 --[[
   this is a port of a html canvas
@@ -27,19 +28,16 @@ timeout   = 0
 -- helpers
 
 function rndangle()
-  r = rnd(1)
+  diff = rnd(.025)
+  r    = rnd(1)
 
-  if r < .25 then
-    a = .075 + rnd(.025)
-  elseif r < .5 then
-    a = .425 - rnd(.025)
-  elseif r < .75 then
-    a = .575 + rnd(.025)
-  else
-    a = .925 - rnd(.025)
+  if     r < .25 then a = .075 + diff
+  elseif r < .5  then a = .425 - diff
+  elseif r < .75 then a = .575 + diff
+  else                a = .925 - diff
   end
 
-  return a + 0.5
+  return a
 end
 
 function rndcol()
@@ -61,40 +59,25 @@ end
 -->8
 -- particle
 
-local particle = {}
-particle.__index = particle
-
-function particle.new(x, y)
-  local self = setmetatable({}, particle)
-
-  self.angle    = rndangle()
-  self.color    = rndcol()
-  self.friction = 0.97
-  self.gravity  = 4
-  self.x        = x
-  self.y        = y
-  self.size     = rndint(1, 2)
-  self.velocity = rndint(2, 5)
-
-  return self
-end
-
-function particle.is_outside_screen(self)
-  return self.x < 0 or self.x > 138 or self.y > 128
-end
-
-function particle.draw(self)
-  rectfill(self.x, self.y, self.x + self.size, self.y + self.size, self.color)
-end
-
-function particle.update(self, index)
-  self.x        += cos(self.angle) * self.velocity
-  self.y        += sin(self.angle) * self.velocity + self.gravity
-  self.velocity *= self.friction
-
-  if (self:is_outside_screen()) then
-    particles[index] = nil
-  end
+function particle(x, y)
+  return {
+    angle    = rndangle(),
+    color    = rndcol(),
+    friction = 0.97,
+    gravity  = 4,
+    x        = x,
+    y        = y,
+    size     = rndint(1, 2),
+    velocity = rndint(2, 5),
+    _update = function(p, index)
+      p.x        += cos(p.angle) * p.velocity
+      p.y        += sin(p.angle) * p.velocity + p.gravity
+      p.velocity *= p.friction
+    end,
+    _draw = function(p)
+      rectfill(p.x, p.y, p.x + p.size, p.y + p.size, p.color)
+    end,
+  }
 end
 
 -- firework
@@ -110,7 +93,7 @@ function create_firework()
   particles = {}
 
   while i < n do
-    p = particle.new(x, y)
+    p = particle(x, y)
     add(particles, p)
     i += 1
   end
@@ -122,7 +105,7 @@ end
 
 function _update()
   for i, p in pairs(particles) do
-    p:update(i)
+    p:_update(i)
   end
 
   if (timeout <= 0) then
@@ -139,7 +122,7 @@ function _draw()
   flash = false
 
   for p in all(particles) do
-    p:draw()
+    p:_draw()
   end
 end
 __sfx__
